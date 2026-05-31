@@ -2,6 +2,7 @@ from dataclasses import dataclass, asdict
 from typing import Annotated
 
 from sklearn.ensemble import IsolationForest
+from sklearn.linear_model import LogisticRegression
 import xgboost as xgb
 
 
@@ -24,12 +25,10 @@ class Advanced(Config):
 
 def get_models(baseline_config: Baseline, advanced_config: Advanced):
     baseline_model = IsolationForest(**asdict(baseline_config))
+    mid_model = LogisticRegression(random_state=42)
     advanced_model = xgb.XGBClassifier(**asdict(advanced_config))
-    return (baseline_model, advanced_model)
-
-
-if __name__ == "__main__":
-    baseline_config = Baseline(contamination=0.1)
-    advanced_config = Advanced(learning_rate=0.01)
-    models = get_models(baseline_config, advanced_config)
-    print(models)
+    return {
+        "Isolation Forest": baseline_model,
+        "Logistic Regression": mid_model,
+        "XGBoost": advanced_model,
+    }

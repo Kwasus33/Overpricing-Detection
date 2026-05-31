@@ -8,8 +8,9 @@ SELECTED_FEATURES = {
         "date",
         "available",
         "price",
-        "minimum_nights",  # NaN / empty cells can be imputed by median for selected listing_id
-        "maximum_nights",
+        # dunno if needed
+        # "minimum_nights",  # NaN / empty cells can be imputed by median for selected listing_id
+        # "maximum_nights",
     ],
     "listings": [
         "id",
@@ -20,7 +21,8 @@ SELECTED_FEATURES = {
         # "neighbourhood_cleansed",  # districts of Berlin - can filter price in neighbourhoos by that; to one-hot
         "neighbourhood_group_cleansed",  # precise location - e.g. street in district; to one-hot
         "property_type",  # to one-hot
-        "room_type",  # to one-hot
+        "room_type",  # to one-hot --> more NaNs in data than in property_type
+        # dunno if below needed
         "accommodates",
         "bathrooms",
         "bedrooms",
@@ -61,7 +63,7 @@ SELECTED_FEATURES = {
 
 ONE_HOT_ENCODE = ["neighbourhood_group_cleansed", "property_type", "room_type"]
 
-MULTI_HOT_ENCODE = ["amenities"]
+MULTI_HOT_ENCODE = "amenities"
 
 BOOL_ENCODE = ["available", "instant_bookable"]
 
