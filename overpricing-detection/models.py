@@ -8,27 +8,33 @@ import xgboost as xgb
 
 @dataclass
 class Config:
-    n_estimators: Annotated[int, "Number of trees to build Isolation Forest"] = 100
     random_state = 42
+    n_estimators: Annotated[int, "Number of trees to build Isolation Forest"] = 100
 
 
 @dataclass
-class Baseline(Config):
+class BaseConfig(Config):
     contamination: Annotated[float, "Suspected number of anomalies"] = 0.1
 
 
 @dataclass
-class Advanced(Config):
+class AdvancedConfig(Config):
     learning_rate: Annotated[float, "Learning rate"] = None
     booster: Annotated[float, "Type of booster, e.g. gbtree, gblinear, dart"] = "gbtree"
 
 
-def get_models(baseline_config: Baseline, advanced_config: Advanced):
-    baseline_model = IsolationForest(**asdict(baseline_config))
-    mid_model = LogisticRegression(random_state=42)
+def get_models(
+    baseline_config: BaseConfig,
+    advanced_config: AdvancedConfig,
+    unsupervised_base=False,
+):
+    baseline_model = (
+        IsolationForest(**asdict(baseline_config))
+        if unsupervised_base
+        else LogisticRegression(random_state=baseline_config.random_state)
+    )
     advanced_model = xgb.XGBClassifier(**asdict(advanced_config))
     return {
-        "Isolation Forest": baseline_model,
-        "Logistic Regression": mid_model,
-        "XGBoost": advanced_model,
+        f"baseline_unsupervised_{unsupervised_base}": baseline_model,
+        "advanced": advanced_model,
     }

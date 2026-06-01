@@ -1,3 +1,6 @@
+import os
+import joblib
+
 import pandas as pd
 from sklearn.metrics import roc_auc_score
 from sklearn.compose import ColumnTransformer
@@ -9,7 +12,7 @@ from sklearn.model_selection import train_test_split
 
 from consts import ONE_HOT_ENCODE
 from features_extraction import process_data
-from models import Baseline, Advanced, get_models
+from models import BaseConfig, AdvancedConfig, get_models
 
 
 def prep_data(train_df: pd.DataFrame):
@@ -48,16 +51,9 @@ def prep_pipeline(X):
     return preprocessor
 
 
-def run_pipeline(models, df):
+def run_train_pipeline(models, df, save_path=""):
     X, y = prep_data(df)
     preprocessor = prep_pipeline(X)
-
-    # counter = 0
-    # for val in y:
-    #     if val != 0:
-    #         counter += 1
-    # print(y)
-    # print(counter)
 
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42
@@ -69,21 +65,31 @@ def run_pipeline(models, df):
             steps=[("preprocessor", preprocessor), ("classifier", model)]
         )
         pipeline.fit(X_train, y_train)
-        if model_name == "Isolation Forest":
-            y_proba = -pipeline.decision_function(X_test)
-        else:
-            y_proba = pipeline.predict_proba(X_test)[:, 1]
+
+        y_proba = run_eval_pipeline(pipeline, model_name, X_test)
         res_auc = roc_auc_score(y_test, y_proba)
 
         print(f"Model: {model_name} | ROC-AUC: {res_auc:.4f}\n")
 
+        joblib.dump(pipeline, os.path.join(save_path, f"{model_name}_v1.pkl"))
+
+
+def run_eval_pipeline(pipeline, pipeline_name, X):
+    if pipeline_name == "baseline_unsupervised_True":
+        y_proba = -pipeline.decision_function(X)
+    else:
+        y_proba = pipeline.predict_proba(X)[:, 1]
+    return y_proba
+
 
 if __name__ == "__main__":
-    relative_path = ["..", "data", "v3"]
-    df = process_data(relative_path)
+    relative_path = ["..", "data"]
+    workdir = os.path.dirname(os.path.abspath(__file__))
+    data_path = os.path.join(workdir, *relative_path)
 
-    baseline_config = Baseline(contamination=0.1)
-    advanced_config = Advanced(learning_rate=0.01)
+    df = process_data(relative_path + ["v3"])
+    baseline_config = BaseConfig(contamination=0.1)
+    advanced_config = AdvancedConfig(learning_rate=0.01)
     models = get_models(baseline_config, advanced_config)
 
-    run_pipeline(models, df)
+    run_train_pipeline(models=models, df=df, save_path=data_path)
