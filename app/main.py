@@ -1,64 +1,92 @@
+import math
 import os
-from enum import Enum
-from datetime import datetime
+import uuid
+from datetime import datetime, timezone, date as date_type
 
-from fastapi import FastAPI
+import joblib
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from overpricing_detection.pipeline import run_eval_pipeline
+from app.core import DATA_DIR, log_prediction, offer_to_dataframe, pick_model
 
-app = FastAPI()
+app = FastAPI(title="Overpricing Detection")
+
+# threshold for flagging: actual price more than MULTIPLIER * predicted fair price
+MULTIPLIER = 2
 
 
-def load_models():
-    data_path = ["..", "data"]
-    workdir = os.path.dirname(os.path.abspath(__file__))
-    model_path = os.path.join(workdir, *data_path)
-    models = {
-        file.split(".")[0]: file
-        for file in os.listdir(model_path)
-        if file.endswith(".pkl")
-    }
+def load_models() -> dict:
+    models = {}
+    if not os.path.isdir(DATA_DIR):
+        return models
+    for file in os.listdir(DATA_DIR):
+        if file.endswith(".pkl"):
+            name = file.removesuffix(".pkl").removesuffix("_v1")
+            models[name] = joblib.load(os.path.join(DATA_DIR, file))
     return models
 
 
 MODELS = load_models()
 
 
-class ModelType(str, Enum):
-    baseline_supervised = "baseline_unsupervised_True"
-    baseline_unsupervised = "baseline_unsupervised_False"
-    advanced = "advanced"
-
-
 class Offer(BaseModel):
-    date: datetime
-    available: str  # t/f
-    reg_price: str  # needs removing '$'
-    price: str  # needs removing '$'
-    neighbourhood_group_cleansed: str  # onehot
-    property_type: str  # onehot
-    room_type: str  # onehot
-    # # dunno if below needed
-    # "accommodates",
-    # "bathrooms",
-    # "bedrooms",
-    # "beds",
-    # "amenities",  # to multi-hot
-    # "availability_30",  ### it can be anomaly if listing was booked for most of time during 1 or 2 months and not booked only for few days when price went high
-    # "availability_60",
-    # "number_of_reviews_ltm",
-    # "number_of_reviews_l30d",
-    # "review_scores_rating",
-    # "instant_bookable",  # to encode t==1, f==0
-    # "calculated_host_listings_count",
-    # "reviews_per_month",
+    date: date_type
+    price: float
+    neighbourhood_group_cleansed: str
+    property_type: str | None = None
+    room_type: str | None = None
+    accommodates: int | None = None
+    bathrooms: float | None = None
+    bedrooms: float | None = None
+    beds: float | None = None
 
 
-@app.post("/predict/{model_type}")
-async def predict(model_type: ModelType, new_offer: Offer):
-    model = MODELS.get(model_type)
-    if model:
-        y_proba = run_eval_pipeline(model, model_type, new_offer)
+class PredictionResponse(BaseModel):
+    request_id: str
+    is_overpriced: int
+    predicted_price: float
+    price_ratio: float
 
-    return {"Predictions": y_proba if y_proba else []}
+
+@app.get("/health")
+async def health() -> dict:
+    return {"status": "ok", "models_loaded": list(MODELS.keys())}
+
+
+@app.post("/predict", response_model=PredictionResponse)
+async def predict(offer: Offer) -> PredictionResponse:
+    if not MODELS:
+        raise HTTPException(status_code=503, detail="No models loaded")
+
+    model_name = pick_model(list(MODELS.keys()))
+    pipeline = MODELS[model_name]
+
+    X = offer_to_dataframe(offer.model_dump())
+    y_pred_log = run_eval_pipeline(pipeline, model_name, X)
+    predicted_price = float(math.exp(y_pred_log[0]))
+    price_ratio = offer.price / predicted_price
+    label = int(price_ratio > MULTIPLIER)
+
+    request_id = str(uuid.uuid4())
+    log_prediction({
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "request_id": request_id,
+        "model": model_name,
+        "input": offer.model_dump(mode="json"),
+        "is_overpriced": label,
+        "predicted_price": predicted_price,
+        "price_ratio": price_ratio,
+    })
+
+    return PredictionResponse(
+        request_id=request_id,
+        is_overpriced=label,
+        predicted_price=predicted_price,
+        price_ratio=price_ratio,
+    )
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("app.main:app", host="0.0.0.0", port=8080, reload=False)

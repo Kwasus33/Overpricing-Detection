@@ -6,15 +6,15 @@ SELECTED_FEATURES = {
     "calendar": [
         "listing_id",
         "date",
-        "available",
-        "price",
+        "price",  # regression target (as log price)
         # dunno if needed
         # "minimum_nights",  # NaN / empty cells can be imputed by median for selected listing_id
         # "maximum_nights",
+        # "available",  # excluded: not a feature, and per-listing booking outcome is the post-hoc heuristic input, not training input
     ],
     "listings": [
         "id",
-        "price",  # strip price from $100.00 format
+        # "price",  # excluded as feature: would leak the target (host's stated price)
         # "name",
         # "description",
         # "neighborhood_overview", # all listings from Berlin, Germany
@@ -27,7 +27,7 @@ SELECTED_FEATURES = {
         "bathrooms",
         "bedrooms",
         "beds",
-        "amenities",  # to multi-hot
+        # "amenities",  # to multi-hot
         # "minimum_nights", # minimum / maximum night can be read from calendar data
         # "maximum_nights",
         # "minimum_minimum_nights",
@@ -36,51 +36,37 @@ SELECTED_FEATURES = {
         # "maximum_maximum_nights",
         # "minimum_nights_avg_ntm",
         # "maximum_nights_avg_ntm",
-        "availability_30",  ### it can be anomaly if listing was booked for most of time during 1 or 2 months and not booked only for few days when price went high
-        "availability_60",
+        # Inference-time unavailable / leakage-adjacent (correlated with `available`):
+        # "availability_30",  ### it can be anomaly if listing was booked for most of time during 1 or 2 months and not booked only for few days when price went high
+        # "availability_60",
         # "availability_90",
         # "availability_365",
+        # Review counts/scores: a new offer has no review history at creation time.
         # "number_of_reviews",
-        "number_of_reviews_ltm",
-        "number_of_reviews_l30d",
+        # "number_of_reviews_ltm",
+        # "number_of_reviews_l30d",
         # "first_review",
         # "last_review",
-        "review_scores_rating",  # it's cumulated score, rest of review scores are separated in categories - rest of review_scores used only to get mean value if this is empty
-        "review_scores_accuracy",  # will be dropped
-        "review_scores_cleanliness",  # will be dropped
-        "review_scores_checkin",  # will be dropped
-        "review_scores_communication",  # will be dropped
-        "review_scores_location",  # will be dropped
-        "review_scores_value",  # will be dropped
-        "instant_bookable",  # to encode t==1, f==0
-        "calculated_host_listings_count",
+        # "review_scores_rating",  # it's cumulated score, rest of review scores are separated in categories - rest of review_scores used only to get mean value if this is empty
+        # "review_scores_accuracy",  # will be dropped
+        # "review_scores_cleanliness",  # will be dropped
+        # "review_scores_checkin",  # will be dropped
+        # "review_scores_communication",  # will be dropped
+        # "review_scores_location",  # will be dropped
+        # "review_scores_value",  # will be dropped
+        # "instant_bookable",  # to encode t==1, f==0
+        # "calculated_host_listings_count",
         # "calculated_host_listings_count_entire_homes",
         # "calculated_host_listings_count_private_rooms",
         # "calculated_host_listings_count_shared_rooms",
-        "reviews_per_month",
+        # "reviews_per_month",
     ],
 }
 
 ONE_HOT_ENCODE = ["neighbourhood_group_cleansed", "property_type", "room_type"]
 
-MULTI_HOT_ENCODE = "amenities"
+# MULTI_HOT_ENCODE = "amenities"  # dropped: amenities feature removed
 
-BOOL_ENCODE = ["available", "instant_bookable"]
+# BOOL_ENCODE no longer needed — `available` not used during training
 
-REVIEW_SCORES = [
-    "review_scores_accuracy",
-    "review_scores_cleanliness",
-    "review_scores_checkin",
-    "review_scores_communication",
-    "review_scores_location",
-    "review_scores_value",
-]
-
-FILLNA_ZERO = [
-    "availability_30",
-    "availability_60",
-    "number_of_reviews_ltm",
-    "number_of_reviews_l30d",
-    "calculated_host_listings_count",
-    "reviews_per_month",
-]
+# REVIEW_SCORES / FILLNA_ZERO no longer needed — review/availability features dropped

@@ -1,26 +1,20 @@
 import os
 import joblib
 
+import numpy as np
 import pandas as pd
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import mean_absolute_error
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
-from sklearn.model_selection import train_test_split
 
-from consts import ONE_HOT_ENCODE
-from features_extraction import process_data
-from models import BaseConfig, AdvancedConfig, get_models
+from .consts import ONE_HOT_ENCODE
+from .features_extraction import process_data
+from .models import BaseConfig, AdvancedConfig, get_models
 
-
-def prep_data(train_df: pd.DataFrame):
-    train_df = df.drop(columns="listing_id")
-    y = train_df["is_overpriced"]
-    X = train_df.drop(columns="is_overpriced")
-    return X, y
-
+DATA_VERSION = "v4"
 
 def prep_pipeline(X):
     num_cols = [column for column in X.columns if column not in ONE_HOT_ENCODE]
@@ -51,35 +45,39 @@ def prep_pipeline(X):
     return preprocessor
 
 
-def run_train_pipeline(models, df, save_path=""):
-    X, y = prep_data(df)
-    preprocessor = prep_pipeline(X)
+def listing_split(df: pd.DataFrame, val_frac: float = 0.2, seed: int = 42):
+    """Split by listing_id: a listing's rows are entirely in train or entirely in val."""
+    rng = pd.Series(df["listing_id"].unique()).sample(frac=1, random_state=seed)
+    n_val = int(len(rng) * val_frac)
+    val_ids = set(rng.iloc[:n_val])
+    val_mask = df["listing_id"].isin(val_ids)
+    y = df["log_price"]
+    X = df.drop(columns=["log_price", "price", "listing_id"])
+    return X[~val_mask], X[val_mask], y[~val_mask], y[val_mask]
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42
-    )
+
+def run_train_pipeline(models, df, save_path=""):
+    X_train, X_val, y_train, y_val = listing_split(df, val_frac=0.2)
+    preprocessor = prep_pipeline(X_train)
 
     for model_name in models:
         model = models[model_name]
         pipeline = Pipeline(
-            steps=[("preprocessor", preprocessor), ("classifier", model)]
+            steps=[("preprocessor", preprocessor), ("regressor", model)]
         )
         pipeline.fit(X_train, y_train)
 
-        y_proba = run_eval_pipeline(pipeline, model_name, X_test)
-        res_auc = roc_auc_score(y_test, y_proba)
+        y_pred = run_eval_pipeline(pipeline, model_name, X_val)
+        res_mae_log = mean_absolute_error(y_val, y_pred)
+        res_mae_price = mean_absolute_error(np.exp(y_val), np.exp(y_pred))
 
-        print(f"Model: {model_name} | ROC-AUC: {res_auc:.4f}\n")
+        print(f"Model: {model_name} | MAE(log_price): {res_mae_log:.4f} | MAE(price): {res_mae_price:.2f}\n")
 
         joblib.dump(pipeline, os.path.join(save_path, f"{model_name}_v1.pkl"))
 
 
 def run_eval_pipeline(pipeline, pipeline_name, X):
-    if pipeline_name == "baseline_unsupervised_True":
-        y_proba = -pipeline.decision_function(X)
-    else:
-        y_proba = pipeline.predict_proba(X)[:, 1]
-    return y_proba
+    return pipeline.predict(X)
 
 
 if __name__ == "__main__":
@@ -87,8 +85,8 @@ if __name__ == "__main__":
     workdir = os.path.dirname(os.path.abspath(__file__))
     data_path = os.path.join(workdir, *relative_path)
 
-    df = process_data(relative_path + ["v3"])
-    baseline_config = BaseConfig(contamination=0.1)
+    df = process_data(relative_path + [DATA_VERSION])
+    baseline_config = BaseConfig()
     advanced_config = AdvancedConfig(learning_rate=0.01)
     models = get_models(baseline_config, advanced_config)
 
