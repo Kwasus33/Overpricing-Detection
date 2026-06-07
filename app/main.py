@@ -6,6 +6,7 @@ from datetime import datetime, timezone, date as date_type
 import joblib
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+import uvicorn
 
 from overpricing_detection.pipeline import run_eval_pipeline
 from app.core import DATA_DIR, log_prediction, offer_to_dataframe, pick_model
@@ -63,21 +64,23 @@ async def predict(offer: Offer) -> PredictionResponse:
     pipeline = MODELS[model_name]
 
     X = offer_to_dataframe(offer.model_dump())
-    y_pred_log = run_eval_pipeline(pipeline, model_name, X)
+    y_pred_log = run_eval_pipeline(pipeline, X)
     predicted_price = float(math.exp(y_pred_log[0]))
     price_ratio = offer.price / predicted_price
     label = int(price_ratio > MULTIPLIER)
 
     request_id = str(uuid.uuid4())
-    log_prediction({
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "request_id": request_id,
-        "model": model_name,
-        "input": offer.model_dump(mode="json"),
-        "is_overpriced": label,
-        "predicted_price": predicted_price,
-        "price_ratio": price_ratio,
-    })
+    log_prediction(
+        {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "request_id": request_id,
+            "model": model_name,
+            "input": offer.model_dump(mode="json"),
+            "is_overpriced": label,
+            "predicted_price": predicted_price,
+            "price_ratio": price_ratio,
+        }
+    )
 
     return PredictionResponse(
         request_id=request_id,
@@ -88,5 +91,4 @@ async def predict(offer: Offer) -> PredictionResponse:
 
 
 if __name__ == "__main__":
-    import uvicorn
     uvicorn.run("app.main:app", host="0.0.0.0", port=8080, reload=False)

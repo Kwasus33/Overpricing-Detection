@@ -18,9 +18,7 @@ def load_data(relative_path: list):
     dataframes = {}
 
     for file in files:
-        dataframes[file.split(".")[0]] = pd.read_csv(
-            os.path.join(data_path, file), sep=","
-        )
+        dataframes[file.split(".")[0]] = pd.read_csv(os.path.join(data_path, file), sep=",")
 
     return dataframes
 
@@ -38,13 +36,7 @@ def process_features(merged_df):
     merged_df = merged_df.dropna(subset=["listing_id"])
     merged_df["listing_id"] = merged_df["listing_id"].astype(int)
 
-    # merged_df["has_reviews"] = merged_df["number_of_reviews"].notna() & (merged_df["number_of_reviews"] > 0)
-    # for col in ["review_scores_rating", "number_of_reviews", "reviews_per_month"]:
-    #     merged_df[col] = merged_df[col].fillna(0)
-
-    merged_df["price"] = (
-        merged_df["price"].str.replace("$", "").str.replace(",", "").astype(float)
-    )
+    merged_df["price"] = merged_df["price"].str.replace("$", "").str.replace(",", "").astype(float)
 
     merged_df["date"] = pd.to_datetime(merged_df["date"])
     merged_df = merged_df.dropna(subset=["date"])
@@ -52,12 +44,10 @@ def process_features(merged_df):
     merged_df["year"] = merged_df["date"].dt.year.astype(int)
     merged_df["month"] = merged_df["date"].dt.month.astype(int)
     merged_df["day"] = merged_df["date"].dt.day.astype(int)
-    # season as year quarter
     merged_df["year_quarter"] = merged_df["date"].dt.quarter.astype(int)
 
     merged_df.drop(columns=["date"], inplace=True)
 
-    # regression target: log(price); drop rows with missing or non-positive price
     merged_df = merged_df.dropna(subset=["price"])
     merged_df = merged_df[merged_df["price"] > 0]
     merged_df["log_price"] = np.log(merged_df["price"])
@@ -72,11 +62,8 @@ def process_data(relative_path):
 
     calendar_df: pd.DataFrame = dataframes["calendar"]
 
-    merged_df = calendar_df.merge(
-        listings_df, left_on="listing_id", right_on="id", how="inner"
-    )
+    merged_df = calendar_df.merge(listings_df, left_on="listing_id", right_on="id", how="inner")
     merged_df.drop(columns=["id"], inplace=True)
     df = process_features(merged_df)
 
-    # raw `price` retained for inspection only; training drops it to avoid target leakage
     return df

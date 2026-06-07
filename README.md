@@ -42,16 +42,16 @@ W ramach projektu trzeba dostarczyć:
 - b) etap 2 – do **2026.06.07** :
   - i) dwa modele: model bazowy (najprostszy możliwy dla danego zadania) i bardziej zaawansowany model docelowy, oraz raport z pokazujący proces budowy modelu i porównujący wyniki **(0-15 pkt)** ,
 
-- ii) implementację mikroserwisu (przykład czym jest mikroserwis można zobaczyć tutaj), która pozwala na **(0-15 pkt)** :
-  - (1) serwowanie predykcji – tutaj proszę pamiętać, że wybór modelu z perspektywy klienta Państwa usługi powinien być przezroczysty, a przykładowe wywołanie mogłoby wyglądać choćby tak:
+  - ii) implementację mikroserwisu (przykład czym jest mikroserwis można zobaczyć tutaj), która pozwala na **(0-15 pkt)** :
+    - (1) serwowanie predykcji – tutaj proszę pamiętać, że wybór modelu z perspektywy klienta Państwa usługi powinien być przezroczysty, a przykładowe wywołanie mogłoby wyglądać choćby tak:
 
-curl -X POST -H "Content-Type:application/json" -d '{json data goes here}' http://localhost:8080/some_app_name
+      curl -X POST -H "Content-Type:application/json" -d '{json data goes here}' http://localhost:8080/some_app_name
 
-        - (2) realizację eksperymentu A/B – w ramach którego porównywane będą oba modele i **zbierane dane** niezbędne do późniejszej oceny ich jakości,
+    - (2) realizację eksperymentu A/B – w ramach którego porównywane będą oba modele i **zbierane dane** niezbędne do późniejszej oceny ich jakości,
 
-    - iii) skrypt/notatnik pozwalający na ewaluację testu A/B na podstawie logu generowanego przez mikroserwis
+  - iii) skrypt/notatnik pozwalający na ewaluację testu A/B na podstawie logu generowanego przez mikroserwis
 
-    - iv) materiały pokazujące, że implementacja działa.
+  - iv) materiały pokazujące, że implementacja działa.
 
 - 5. “Oddając” etap, wysyłamy rozwiązanie mailem do Prowadzącego w tym:
   - a) raporty/dokumentację w formie PDF lub notatników jupyter (ułatwiających łączenie generowanych wyników/wykresów i tekstu raportu w jednym dokumencie),

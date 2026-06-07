@@ -12,16 +12,16 @@ from sklearn.preprocessing import StandardScaler, OneHotEncoder
 
 from .consts import ONE_HOT_ENCODE
 from .features_extraction import process_data
-from .models import BaseConfig, AdvancedConfig, get_models
+from .models import AdvancedConfig, get_models
 
 DATA_VERSION = "v4"
+
 
 def prep_pipeline(X):
     num_cols = [column for column in X.columns if column not in ONE_HOT_ENCODE]
 
     numerical_pipeline = Pipeline(
         steps=[
-            # for Imputer can be also tested strategy: mean, median
             ("imputer", SimpleImputer(strategy="most_frequent")),
             ("scaler", StandardScaler()),
             ("selector", VarianceThreshold()),
@@ -62,12 +62,10 @@ def run_train_pipeline(models, df, save_path=""):
 
     for model_name in models:
         model = models[model_name]
-        pipeline = Pipeline(
-            steps=[("preprocessor", preprocessor), ("regressor", model)]
-        )
+        pipeline = Pipeline(steps=[("preprocessor", preprocessor), ("regressor", model)])
         pipeline.fit(X_train, y_train)
 
-        y_pred = run_eval_pipeline(pipeline, model_name, X_val)
+        y_pred = run_eval_pipeline(pipeline, X_val)
         res_mae_log = mean_absolute_error(y_val, y_pred)
         res_mae_price = mean_absolute_error(np.exp(y_val), np.exp(y_pred))
 
@@ -76,7 +74,7 @@ def run_train_pipeline(models, df, save_path=""):
         joblib.dump(pipeline, os.path.join(save_path, f"{model_name}_v1.pkl"))
 
 
-def run_eval_pipeline(pipeline, pipeline_name, X):
+def run_eval_pipeline(pipeline, X):
     return pipeline.predict(X)
 
 
@@ -86,8 +84,7 @@ if __name__ == "__main__":
     data_path = os.path.join(workdir, *relative_path)
 
     df = process_data(relative_path + [DATA_VERSION])
-    baseline_config = BaseConfig()
     advanced_config = AdvancedConfig(learning_rate=0.01)
-    models = get_models(baseline_config, advanced_config)
+    models = get_models(advanced_config)
 
     run_train_pipeline(models=models, df=df, save_path=data_path)

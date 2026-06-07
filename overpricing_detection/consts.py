@@ -1,5 +1,3 @@
-# TODO: check in notebook data analysis which columns are e.g. more than half empty or all empty (like 'calendar updated') or have const value (like has_availability) and drop them from features on which models will be trained
-
 DATA_TAGS = ["calendar", "listings"]
 
 SELECTED_FEATURES = {
@@ -7,7 +5,6 @@ SELECTED_FEATURES = {
         "listing_id",
         "date",
         "price",  # regression target (as log price)
-        # dunno if needed
         # "minimum_nights",  # NaN / empty cells can be imputed by median for selected listing_id
         # "maximum_nights",
         # "available",  # excluded: not a feature, and per-listing booking outcome is the post-hoc heuristic input, not training input
@@ -64,9 +61,3 @@ SELECTED_FEATURES = {
 }
 
 ONE_HOT_ENCODE = ["neighbourhood_group_cleansed", "property_type", "room_type"]
-
-# MULTI_HOT_ENCODE = "amenities"  # dropped: amenities feature removed
-
-# BOOL_ENCODE no longer needed — `available` not used during training
-
-# REVIEW_SCORES / FILLNA_ZERO no longer needed — review/availability features dropped

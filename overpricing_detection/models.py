@@ -6,18 +6,7 @@ import xgboost as xgb
 
 
 @dataclass
-class Config:
-    random_state: Annotated[int, "Seed for reproducibility"] = 42
-    n_estimators: Annotated[int, "Number of trees"] = 100
-
-
-@dataclass
-class BaseConfig(Config):
-    pass
-
-
-@dataclass
-class AdvancedConfig(Config):
+class AdvancedConfig:
     learning_rate: Annotated[float, "Learning rate"] = 0.05
     n_estimators: Annotated[int, "Number of trees"] = 500
     max_depth: Annotated[int, "Max tree depth"] = 5
@@ -26,10 +15,10 @@ class AdvancedConfig(Config):
     colsample_bytree: Annotated[float, "Feature subsample per tree"] = 0.8
     gamma: Annotated[float, "Min loss reduction to split"] = 0.1
     booster: Annotated[str, "Type of booster, e.g. gbtree, gblinear, dart"] = "gbtree"
+    random_state: Annotated[int, "Seed for reproducibility"] = 42
 
 
 def get_models(
-    baseline_config: BaseConfig,
     advanced_config: AdvancedConfig,
 ):
     baseline_model = LinearRegression()
