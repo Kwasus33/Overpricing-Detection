@@ -65,7 +65,7 @@ async def predict(offer: Offer) -> PredictionResponse:
     pipeline = MODELS[model_name]
 
     X = offer_to_dataframe(offer.model_dump())
-    y_pred_log = run_eval_pipeline(pipeline, model_name, X)
+    y_pred_log = run_eval_pipeline(pipeline, X)
     predicted_price = float(math.exp(y_pred_log[0]))
     price_ratio = offer.price / predicted_price
     label = int(price_ratio > MULTIPLIER)
