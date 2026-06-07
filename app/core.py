@@ -1,3 +1,4 @@
+import hashlib
 import json
 import os
 import random
@@ -10,8 +11,12 @@ DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__
 LOG_PATH = os.path.join(DATA_DIR, "predictions.log")
 
 
-def pick_model(model_names: list[str]) -> str:
-    return random.choice(model_names)
+def pick_model(model_names: list[str], user_id: str | None = None) -> str:
+    if user_id is None:
+        return random.choice(model_names)
+    digest = hashlib.md5(user_id.encode()).hexdigest()
+    bucket = int(digest, 16) % len(model_names)
+    return sorted(model_names)[bucket]
 
 
 NUMERIC_OFFER_COLS = ("accommodates", "bathrooms", "bedrooms", "beds")
@@ -21,6 +26,7 @@ def offer_to_dataframe(offer_dict: dict[str, Any]) -> pd.DataFrame:
     row = dict(offer_dict)
     date: datetime = row.pop("date")
     row.pop("price", None)
+    row.pop("user_id", None)
     row["year"] = date.year
     row["month"] = date.month
     row["day"] = date.day

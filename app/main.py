@@ -32,6 +32,7 @@ MODELS = load_models()
 
 
 class Offer(BaseModel):
+    user_id: str | None = None  # for A/B group
     date: date_type
     price: float
     neighbourhood_group_cleansed: str
@@ -60,11 +61,11 @@ async def predict(offer: Offer) -> PredictionResponse:
     if not MODELS:
         raise HTTPException(status_code=503, detail="No models loaded")
 
-    model_name = pick_model(list(MODELS.keys()))
+    model_name = pick_model(list(MODELS.keys()), user_id=offer.user_id)
     pipeline = MODELS[model_name]
 
     X = offer_to_dataframe(offer.model_dump())
-    y_pred_log = run_eval_pipeline(pipeline, X)
+    y_pred_log = run_eval_pipeline(pipeline, model_name, X)
     predicted_price = float(math.exp(y_pred_log[0]))
     price_ratio = offer.price / predicted_price
     label = int(price_ratio > MULTIPLIER)
@@ -79,6 +80,7 @@ async def predict(offer: Offer) -> PredictionResponse:
             "is_overpriced": label,
             "predicted_price": predicted_price,
             "price_ratio": price_ratio,
+            "user_id": offer.user_id,
         }
     )
 
